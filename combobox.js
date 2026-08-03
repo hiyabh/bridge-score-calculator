@@ -48,8 +48,17 @@ const Combobox = (() => {
   }
 
   // --- רשימה נפתחת ---
-  function matches(o, q) {
-    return !q || String(o.label).includes(q) || String(o.value).includes(q);
+  // סינון עם דירוג: התאמות קידומת על הקוד (value) או על התווית קודמות להתאמות
+  // substring — כך הקלדת "14.1" מציגה את פגם 14.1 ראשון ולא את 1.14 וכד'.
+  function rankedMatches(options, q) {
+    if (!q) return options;
+    const prefix = [], substr = [];
+    for (const o of options) {
+      const label = String(o.label), value = String(o.value);
+      if (value.startsWith(q) || label.startsWith(q)) prefix.push(o);
+      else if (label.includes(q) || value.includes(q)) substr.push(o);
+    }
+    return prefix.concat(substr);
   }
 
   function openList(combo, query) {
@@ -59,9 +68,9 @@ const Combobox = (() => {
     const q = (query || "").trim();
     const list = combo.querySelector(".combo-list");
     let html = "", lastGroup = null, count = 0;
-    for (const o of r.options) {
-      if (!matches(o, q)) continue;
-      if (o.group && o.group !== lastGroup) {
+    // בזמן סינון הסדר ממוין לפי רלוונטיות — כותרות הקבוצות מוצגות רק ברשימה המלאה
+    for (const o of rankedMatches(r.options, q)) {
+      if (!q && o.group && o.group !== lastGroup) {
         html += `<div class="combo-group">${escT(o.group)}</div>`;
         lastGroup = o.group;
       }
@@ -110,18 +119,41 @@ const Combobox = (() => {
     closeList(combo);
   }
 
+  // --- פוקוס "שקט" — מיקוד מחדש אחרי re-render בלי לפתוח את הרשימה ---
+  let suppressOpenOnce = false;
+  function silentFocus(el) {
+    if (el.classList && el.classList.contains("combo-input")) suppressOpenOnce = true;
+    el.focus({ preventScroll: true });
+  }
+
+  // --- מעבר לשדה הבא אחרי אישור בחירה ב-Tab (אחרי שה-re-render הסתיים) ---
+  function focusAfter(id) {
+    const combo = document.querySelector(`[data-combo-id="${CSS.escape(id)}"]`);
+    if (!combo) return;
+    const input = combo.querySelector(".combo-input");
+    const focusables = [...document.querySelectorAll(
+      'input:not([type="hidden"]), select, textarea, button, [tabindex]:not([tabindex="-1"])'
+    )].filter((el) => !el.disabled && el.offsetParent !== null);
+    const next = focusables[focusables.indexOf(input) + 1];
+    if (next) silentFocus(next);
+  }
+
   // --- אירועים מואצלים חד-פעמיים — שורדים כל החלפת innerHTML ---
   function init() {
     document.addEventListener("focusin", (e) => {
       if (!e.target.classList || !e.target.classList.contains("combo-input")) return;
+      if (suppressOpenOnce) { suppressOpenOnce = false; return; }
       const combo = e.target.closest(".combo");
+      delete combo.dataset.typed;
       openList(combo, "");
       e.target.select();
     });
 
     document.addEventListener("input", (e) => {
       if (!e.target.classList || !e.target.classList.contains("combo-input")) return;
-      openList(e.target.closest(".combo"), e.target.value);
+      const combo = e.target.closest(".combo");
+      combo.dataset.typed = "1";
+      openList(combo, e.target.value);
     });
 
     document.addEventListener("keydown", (e) => {
@@ -132,6 +164,7 @@ const Combobox = (() => {
       let hi = +combo.dataset.hi || 0;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
+        combo.dataset.typed = "1";  // ניווט בחיצים = כוונת בחירה — Tab יאשר
         if (list.hidden) { openList(combo, e.target.value); return; }
         hi = e.key === "ArrowDown" ? Math.min(hi + 1, its.length - 1) : Math.max(hi - 1, 0);
         setHighlight(combo, hi);
@@ -143,7 +176,24 @@ const Combobox = (() => {
       } else if (e.key === "Escape") {
         revert(combo);
       } else if (e.key === "Tab") {
-        revert(combo);
+        // Tab מאשר את הבחירה (כמו Enter) וממשיך לשדה הבא — מילוי רציף במקלדת.
+        // מאשרים רק אם המשתמש הקליד/ניווט בפועל; אחרת Tab רגיל בלי שינוי.
+        const id = combo.dataset.comboId;
+        const q = e.target.value.trim();
+        const typed = combo.dataset.typed === "1";
+        delete combo.dataset.typed;
+        const exact = q && (reg[id] || { options: [] }).options
+          .find((o) => String(o.value) === q);
+        const el2 = its[hi] || its[0];
+        const target = exact ? String(exact.value)
+          : (typed && !list.hidden && el2 ? el2.dataset.value : null);
+        if (target != null) {
+          e.preventDefault();
+          commit(combo, target);
+          setTimeout(() => focusAfter(id), 0);  // אחרי שה-re-render המתוזמן הסתיים
+        } else {
+          revert(combo);
+        }
       }
     });
 
@@ -166,5 +216,5 @@ const Combobox = (() => {
 
   document.addEventListener("DOMContentLoaded", init);
 
-  return { html, getValue, setValue };
+  return { html, getValue, setValue, silentFocus, focusAfter };
 })();

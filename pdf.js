@@ -15,7 +15,8 @@ const PdfExport = (() => {
   function renderReportDetail(state) {
     let html = "<h2>נספח — פירוט הרכיבים והפגמים</h2>";
     for (const span of state.spans) {
-      const dimTxt = state.spanCount > 2 && span.dim ? ` (מימד: ${span.dim})` : "";
+      const dimTxt = state.spanCount > 2 && span.dim
+        ? ` (מימד: ${span.dim}${span.dimNote ? ` — ${span.dimNote}` : ""})` : "";
       html += `<h3>${state.spanCount === 1 ? "המבנה כולו" : esc(`מפתח ${span.id}${dimTxt}`)}</h3>`;
       if (!span.components.length) { html += '<p class="hint">אין רכיבים במפתח זה.</p>'; continue; }
       html += '<table class="subs-table"><tr><th>רכיב</th><th>חשיבות</th><th>יחידה</th><th>מידות תתי-רכיבים</th><th>נסקר</th></tr>';
@@ -23,7 +24,7 @@ const PdfExport = (() => {
         html += `<tr><td>${esc((c.catalogId != null ? c.catalogId + ". " : "") + c.name)}</td>
           <td>${esc(c.importance ? IMPORTANCE[c.importance].label : "רכיב עזר")}</td>
           <td>${esc(c.unit || "")}</td>
-          <td>${esc(c.subs.map((s) => s.size).join(" · "))}</td>
+          <td>${esc(c.subs.map((s) => s.size + (s.note ? ` (${s.note})` : "")).join(" · "))}</td>
           <td>${c.surveyed ? "כן" : "לא"}</td></tr>`;
       }
       html += "</table>";

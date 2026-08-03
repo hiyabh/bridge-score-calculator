@@ -1,5 +1,7 @@
 /* מחשבון ציוני מבנים — עיצוב RTL */
 * { box-sizing: border-box; }
+/* label { display:flex } דורס את ברירת המחדל של הדפדפן ל-[hidden] — חובה לאכוף */
+[hidden] { display: none !important; }
 :root {
   --primary: #0b5394; --primary-light: #e8f0fa;
   --border: #d0d7de; --bg: #f6f8fa; --text: #1f2328;
@@ -15,7 +17,12 @@ main { max-width: 1080px; margin: 0 auto; padding: 0 16px 40px; }
 .app-header {
   background: var(--primary); color: #fff; padding: 20px 16px; text-align: center;
 }
+.app-header .logo {
+  display: block; margin: 0 auto 10px; height: 84px; background: #fff;
+  border-radius: 10px; padding: 6px 18px;
+}
 .app-header h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.print-header { display: none; }
 .subtitle { margin: 0 auto 12px; font-size: .85rem; opacity: .92; max-width: 760px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
@@ -98,22 +105,16 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 0
 }
 .subs-table th, .defects-table th { background: var(--bg); }
 .subs-table input { width: 90px; padding: 4px 6px; }
+.subs-table input.note-input { width: 100%; min-width: 160px; font-size: .82rem; color: #57606a; }
+.sub-actions { white-space: nowrap; }
+.subs-block { margin-bottom: 8px; }
 
 .defect-form {
   border: 1px dashed var(--primary); border-radius: 8px; padding: 12px; margin-top: 10px;
   background: #fbfdff;
 }
 .defect-form .grid-2 { margin-bottom: 8px; }
-.sev-options { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
-.sev-option {
-  display: flex; flex-direction: row; gap: 10px; align-items: flex-start;
-  border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 10px; cursor: pointer; font-weight: 400; font-size: .85rem;
-}
-.sev-option:hover { background: var(--primary-light); }
-.sev-option input { margin-top: 3px; }
-.sev-option.selected { border-color: var(--primary); background: var(--primary-light); }
-.sev-num { font-weight: 700; color: var(--primary); min-width: 22px; }
+.defect-form select { max-width: 100%; }
 
 /* תוצאות */
 .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
@@ -134,9 +135,17 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 0
 .summary-block table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .summary-block th, .summary-block td { border: 1px solid var(--border); padding: 5px 9px; text-align: right; }
 .summary-block th { background: var(--bg); }
-.flag-list { margin: 4px 0; padding-inline-start: 20px; font-size: .88rem; }
-.dist-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin: 6px 0; border: 1px solid var(--border); }
-.dist-bar div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: .72rem; min-width: 0; overflow: hidden; }
+.summary-name { font-size: 1.15rem; font-weight: 800; margin: 4px 0; }
+
+/* מדי מהירות — טבלה 15 */
+.gauges { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+.gauge { flex: 1; min-width: 240px; max-width: 340px; text-align: center; }
+.gauge svg { width: 100%; height: auto; display: block; }
+.gauge-title { font-weight: 700; font-size: .95rem; }
+.gauge-sub { font-size: .74rem; color: #57606a; margin-bottom: 4px; }
+.gauge-value { font-size: 2rem; font-weight: 800; line-height: 1.1; margin-top: 2px; }
+.gauge-name { font-weight: 700; font-size: 1rem; }
+.gauge-meaning { font-size: .78rem; color: #333; margin-top: 4px; text-align: center; }
 
 footer { text-align: center; font-size: .78rem; color: #57606a; padding: 18px; }
 
@@ -159,6 +168,8 @@ footer { text-align: center; font-size: .78rem; color: #57606a; padding: 18px; }
 /* הדפסה */
 @media print {
   .no-print { display: none !important; }
+  .print-header { display: block; text-align: center; margin-bottom: 8px; }
+  .print-header img { height: 64px; }
   body { background: #fff; }
   .card { box-shadow: none; border-color: #999; break-inside: avoid; }
   main { max-width: 100%; }
