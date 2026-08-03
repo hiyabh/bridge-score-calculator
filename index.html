@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מחשבון ציוני מבנים — Condition PI (נתיבי ישראל)</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌉</text></svg>">
+</head>
+<body>
+
+<header class="app-header no-print">
+  <h1>🌉 מחשבון ציוני מבנים — Condition PI</h1>
+  <p class="subtitle">חישוב הערכת מצב מבני לגשרים, מובלים, גשרי שילוט, קירות ומנהרות —
+  לפי "הנחיות להערכת המצב המבני" נתיבי ישראל, מהדורה 9-2019</p>
+  <div class="toolbar">
+    <button id="btn-example" class="btn">📂 טען דוגמה BR-11</button>
+    <button id="btn-export" class="btn">⬇️ ייצוא JSON</button>
+    <label class="btn">⬆️ ייבוא JSON<input type="file" id="file-import" accept=".json" hidden></label>
+    <button id="btn-print" class="btn">🖨️ הדפסת דוח</button>
+    <button id="btn-reset" class="btn btn-danger">🗑️ איפוס</button>
+  </div>
+</header>
+
+<main>
+  <!-- שלב 1: הגדרת מבנה -->
+  <section class="card no-print" id="sec-structure">
+    <h2>1️⃣ פרטי המבנה</h2>
+    <div class="grid-2">
+      <label>שם המבנה
+        <input type="text" id="st-name" placeholder='למשל: גשר רכב מעל נחל שורק'>
+      </label>
+      <label>מספר המבנה
+        <input type="text" id="st-number" placeholder="S-BRG-00003900" dir="ltr">
+      </label>
+      <label>סיווג ראשי
+        <select id="st-class"></select>
+      </label>
+      <label id="wrap-supertype">סוג מבנה-על (טבלה 2)
+        <select id="st-supertype"></select>
+      </label>
+      <label id="wrap-tunneltype" hidden>סוג המנהרה (טבלה 6)
+        <select id="st-tunneltype"></select>
+      </label>
+      <label>מספר מפתחים / יחידות
+        <input type="number" id="st-spancount" min="1" max="12" value="1">
+      </label>
+    </div>
+    <div id="span-dims"></div>
+    <p class="hint" id="span-rule-hint"></p>
+  </section>
+
+  <!-- שלב 2: רכיבים ופגמים -->
+  <section class="card no-print" id="sec-components">
+    <h2>2️⃣ רכיבים ופגמים</h2>
+    <div id="span-tabs" class="tabs"></div>
+    <div class="add-row">
+      <select id="add-comp-select"></select>
+      <button id="btn-add-comp" class="btn btn-primary">➕ הוסף רכיב</button>
+    </div>
+    <div id="comp-list"></div>
+  </section>
+
+  <!-- שלב 3: תוצאות -->
+  <section class="card" id="sec-results">
+    <h2 class="no-print">3️⃣ תוצאות</h2>
+    <div id="results"></div>
+  </section>
+
+  <!-- שלב 4: תקציר מנהלים -->
+  <section class="card" id="sec-summary">
+    <h2 class="no-print">4️⃣ תקציר מנהלים</h2>
+    <div id="summary"></div>
+  </section>
+
+  <!-- שלב 5: מועד סקירה הבאה -->
+  <section class="card no-print" id="sec-nextinsp">
+    <h2>5️⃣ מועד הסקירה הבאה</h2>
+    <div class="grid-2">
+      <label>סיווג המבנה לסקירה
+        <select id="insp-class"></select>
+      </label>
+      <label>תאריך הסקירה הנוכחית
+        <input type="date" id="insp-date">
+      </label>
+    </div>
+    <div id="insp-result" class="hint"></div>
+  </section>
+</main>
+
+<footer class="no-print">
+  <p>מבוסס על נוהלי נתיבי ישראל: הנחיות להערכת המצב המבני (9-2019) · פנקס לסוקר (1-2016) ·
+  הנחיות לביצוע סקירה (6-2019) · אוגדן חלוקה ומספור רכיבים (1-2020).
+  הכלי עזר בלבד — האחריות המקצועית על הסוקר והמהנדס.</p>
+</footer>
+
+<script src="data.js"></script>
+<script src="defects.js"></script>
+<script src="example_br11.js"></script>
+<script src="calc.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
