@@ -127,6 +127,22 @@ const twoSpan = Calc.computeStructure({
 checkTrue("2 מפתחים מחושבים כיחידה אחת", twoSpan.singleUnit === true);
 check("SCSav מאוחד = (3·2 + 1·2)/4", twoSpan.unit.scsAv, 2.0, 1e-9);
 
+// מבנה עם 15 מפתחים (מעל התקרה הישנה של 12) — שקלול לפי מימד, משוואה 6.2
+const many = Calc.computeStructure({
+  structureClass: "BRG",
+  spans: Array.from({ length: 15 }, (_, i) => ({
+    id: i + 1, dim: 10 + i,
+    components: [{ key: `c${i + 1}`, name: "c", importance: "veryHigh", surveyed: true, subs: [{ id: 1, size: 1 }] }],
+    defects: [{ compKey: `c${i + 1}`, sub: 1, s: (i % 3) + 1, ex: i % 3 ? "C" : "A" }],
+  })),
+});
+checkTrue("15 מפתחים אינם יחידה אחת", many.singleUnit === false);
+const manyW = many.spans.filter((s) => s.unit.scsAv != null && s.dim > 0);
+const manySumDim = manyW.reduce((a, s) => a + s.dim, 0);
+const manyScsAv = manyW.reduce((a, s) => a + s.unit.scsAv * s.dim, 0) / manySumDim;
+check("15 מפתחים: SCSav משוקלל לפי מימד (משוואה 6.2)", many.bridge.method_norm.scsAv, manyScsAv, 1e-9);
+check("15 מפתחים: CPIav = CPI(SCSav)", many.bridge.method_norm.cpiAv, Calc.cpi(manyScsAv), 1e-9);
+
 // תקציר מנהלים
 const summary = Calc.executiveSummary(bridgeInput, bridgeRes);
 checkTrue("תקציר: רכיב קריטי זוהה", !!summary.criticalComp);

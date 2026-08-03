@@ -4,6 +4,7 @@
 "use strict";
 
 const STORAGE_KEY = "bridge-score-state-v1";
+const MAX_SPANS = 30;
 let uidCounter = 1;
 const nextUid = () => "u" + uidCounter++;
 
@@ -27,7 +28,7 @@ function findComp(uid) {
   return null;
 }
 function syncSpanCount() {
-  const n = Math.max(1, Math.min(12, +state.spanCount || 1));
+  const n = Math.max(1, Math.min(MAX_SPANS, +state.spanCount || 1));
   state.spanCount = n;
   while (state.spans.length < n) state.spans.push({ id: state.spans.length + 1, dim: "", components: [] });
   while (state.spans.length > n) state.spans.pop();
@@ -122,8 +123,16 @@ function update() {
   document.getElementById("st-name").value = state.name;
   document.getElementById("st-number").value = state.number;
   document.getElementById("st-class").value = state.structureClass;
-  document.getElementById("st-supertype").value = state.superType;
-  document.getElementById("st-tunneltype").value = state.tunnelType;
+  document.getElementById("st-supertype-combo").innerHTML = Combobox.html({
+    id: "st-supertype", action: "st-supertype", value: state.superType,
+    options: SUPERSTRUCTURE_TYPES.map((t) => ({ value: t.id, label: `${t.id}. ${t.label}` })),
+    placeholder: "הקלד לסינון…",
+  });
+  document.getElementById("st-tunneltype-combo").innerHTML = Combobox.html({
+    id: "st-tunneltype", action: "st-tunneltype", value: state.tunnelType,
+    options: TUNNEL_TYPES.map((t) => ({ value: t.id, label: `${t.id}. ${t.label}` })),
+    placeholder: "הקלד לסינון…",
+  });
   document.getElementById("st-spancount").value = state.spanCount;
   document.getElementById("wrap-supertype").hidden = !(state.structureClass === "BRG" || state.structureClass === "CLV");
   document.getElementById("wrap-tunneltype").hidden = state.structureClass !== "TUN";
@@ -133,7 +142,10 @@ function update() {
       ? "מבנה בעל מפתח אחד או שניים נסקר ומחושב כיחידה אחת (משוואה 6.1) — אין צורך במימדי שקלול."
       : "מבנה בעל 3 מפתחים ומעלה: ציון לכל מפתח בנפרד ושקלול לפי המימד (משוואה 6.2). הזן מימד לכל מפתח.";
 
-  document.getElementById("add-comp-select").innerHTML = renderComponentOptions(state.structureClass);
+  document.getElementById("add-comp-combo").innerHTML = Combobox.html({
+    id: "add-comp", action: "add-comp", options: componentComboOptions(state.structureClass),
+    placeholder: "— בחר רכיב מהקטלוג (הקלד לסינון) —",
+  });
   document.getElementById("span-tabs").innerHTML = renderSpanTabs(state, ui.activeSpan);
   document.getElementById("comp-list").innerHTML = renderComponentList(activeSpanObj(), ui);
 
@@ -202,10 +214,6 @@ function init() {
   const clsSel = document.getElementById("st-class");
   clsSel.innerHTML = Object.entries(STRUCTURE_CLASSES)
     .map(([k, v]) => `<option value="${k}">${k} — ${esc(v.label)}</option>`).join("");
-  document.getElementById("st-supertype").innerHTML = SUPERSTRUCTURE_TYPES
-    .map((t) => `<option value="${t.id}">${t.id}. ${esc(t.label)}</option>`).join("");
-  document.getElementById("st-tunneltype").innerHTML = TUNNEL_TYPES
-    .map((t) => `<option value="${t.id}">${t.id}. ${esc(t.label)}</option>`).join("");
   document.getElementById("insp-class").innerHTML =
     '<option value="">— בחר סיווג —</option>' +
     INSPECTION_FREQUENCIES.map((f, i) => `<option value="${i}">${esc(f.label)} — כל ${f.years} שנים</option>`).join("");
@@ -217,13 +225,11 @@ function init() {
   document.getElementById("st-name").addEventListener("input", (e) => { state.name = e.target.value; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); });
   document.getElementById("st-number").addEventListener("input", (e) => { state.number = e.target.value; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); });
   document.getElementById("st-class").addEventListener("change", (e) => { state.structureClass = e.target.value; update(); });
-  document.getElementById("st-supertype").addEventListener("change", (e) => { state.superType = +e.target.value; update(); });
-  document.getElementById("st-tunneltype").addEventListener("change", (e) => { state.tunnelType = +e.target.value; update(); });
   document.getElementById("st-spancount").addEventListener("change", (e) => { state.spanCount = +e.target.value; update(); });
 
   document.getElementById("btn-add-comp").addEventListener("click", () => {
-    const v = document.getElementById("add-comp-select").value;
-    if (v) addComponent(v);
+    const v = Combobox.getValue("add-comp");
+    if (v) { Combobox.setValue("add-comp", ""); addComponent(v); }
   });
 
   // אצילת אירועים לכל הפעולות הדינמיות
@@ -286,6 +292,8 @@ function init() {
         if (sub) { sub.size = +el.value || 0; update(); }
       }
     }
+    else if (action === "st-supertype") { state.superType = +el.value; update(); }
+    else if (action === "st-tunneltype") { state.tunnelType = +el.value; update(); }
     else if (action.startsWith("draft-")) draftChanged(action, el.value);
   });
 
@@ -293,23 +301,14 @@ function init() {
   document.getElementById("btn-example").addEventListener("click", () => {
     if (!hasAnyComponents() || confirm("טעינת הדוגמה תחליף את הנתונים הנוכחיים. להמשיך?")) loadExample();
   });
-  document.getElementById("btn-export").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `ציון-מבנה-${state.name || "ללא-שם"}.json`;
-    a.click();
-  });
-  document.getElementById("file-import").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try { state = JSON.parse(reader.result); uidCounter = 20000; ui.activeSpan = 1; update(); }
-      catch (err) { alert("קובץ JSON לא תקין: " + err.message); }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+  document.getElementById("btn-pdf").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-pdf");
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ מכין PDF…";
+    try { await PdfExport.exportPdf(); }
+    catch (err) { alert("יצירת ה-PDF נכשלה: " + err.message + " — נסה שוב או השתמש בהדפסת דוח."); }
+    finally { btn.disabled = false; btn.textContent = orig; }
   });
   document.getElementById("btn-print").addEventListener("click", () => window.print());
   document.getElementById("btn-reset").addEventListener("click", () => {

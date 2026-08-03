@@ -11,21 +11,13 @@ function fmt(v, digits = 2) {
   return v == null || isNaN(v) ? "—" : (+v).toFixed(digits);
 }
 
-// --- קטלוג הרכיבים כ-<option> מקובצות ---
-function renderComponentOptions(structureClass) {
+// --- קטלוג הרכיבים כאפשרויות קומבו מקובצות ---
+function componentComboOptions(structureClass) {
   const catalog = COMPONENT_CATALOGS[structureClass] || [];
-  const groups = {};
-  for (const c of catalog) (groups[c.group] = groups[c.group] || []).push(c);
-  let html = '<option value="">— בחר רכיב מהקטלוג —</option>';
-  for (const [group, comps] of Object.entries(groups)) {
-    html += `<optgroup label="${esc(group)}">`;
-    for (const c of comps) {
-      const impLabel = c.imp ? IMPORTANCE[c.imp].label : "רכיב עזר — לא נכלל בציון";
-      html += `<option value="${c.id}">${esc(c.id)}. ${esc(c.name)} (${esc(impLabel)} · ${esc(c.unit)})</option>`;
-    }
-    html += "</optgroup>";
-  }
-  return html;
+  return catalog.map((c) => {
+    const impLabel = c.imp ? IMPORTANCE[c.imp].label : "רכיב עזר — לא נכלל בציון";
+    return { value: c.id, label: `${c.id}. ${c.name} (${impLabel} · ${c.unit})`, group: c.group };
+  });
 }
 
 // --- שדות מימדי המפתחים ---
@@ -50,16 +42,13 @@ function renderSpanTabs(state, activeSpan) {
   ).join("");
 }
 
-// --- רשימות הפגמים מהפנקס ---
-function renderFamilyOptions(selected) {
-  return DEFECT_CATALOG.families.map((f) =>
-    `<option value="${f.id}" ${f.id === +selected ? "selected" : ""}>${f.id}. ${esc(f.he)} — ${esc(f.en)}</option>`
-  ).join("");
+// --- רשימות הפגמים מהפנקס כאפשרויות קומבו ---
+function familyComboOptions() {
+  return DEFECT_CATALOG.families.map((f) => ({ value: f.id, label: `${f.id}. ${f.he} — ${f.en}` }));
 }
-function renderDefectOptions(familyId, selected) {
-  return DEFECT_CATALOG.defects.filter((d) => d.family === +familyId).map((d) =>
-    `<option value="${esc(d.code)}" ${d.code === selected ? "selected" : ""}>${esc(d.code)} — ${esc(d.name_he)}</option>`
-  ).join("");
+function defectComboOptions(familyId) {
+  return DEFECT_CATALOG.defects.filter((d) => d.family === +familyId)
+    .map((d) => ({ value: d.code, label: `${d.code} — ${d.name_he}` }));
 }
 
 // --- טופס הוספת פגם ---
@@ -86,10 +75,12 @@ function renderDefectForm(comp, draft) {
     <strong>הוספת פגם — לפי הפנקס לסוקר</strong>
     <div class="grid-2">
       <label>משפחת הפגם
-        <select data-action="draft-family">${renderFamilyOptions(draft.family)}</select>
+        ${Combobox.html({ id: "draft-family", action: "draft-family", value: draft.family,
+          options: familyComboOptions(), placeholder: "הקלד לסינון משפחות…" })}
       </label>
       <label>הפגם
-        <select data-action="draft-def">${renderDefectOptions(draft.family, draft.def)}</select>
+        ${Combobox.html({ id: "draft-def", action: "draft-def", value: draft.def,
+          options: defectComboOptions(draft.family), placeholder: "הקלד קוד או שם פגם…" })}
       </label>
       <label>תת-רכיב
         <select data-action="draft-sub">${subOptions}</select>
@@ -245,17 +236,20 @@ function renderSummary(state, result, summary) {
     <tr><th>מפתחים</th><td>${state.spanCount}${state.spanCount <= 2 ? " (מחושב כיחידה אחת)" : ""}</td>
     <th>רכיבים בציון</th><td>${summary.totalScored}</td></tr></table>`;
 
+  // מבנה מרובה-מפתחים ללא מימדי שקלול — הציון עדיין null, אין להפיל את הרינדור
+  const pill = (m) => (m ? `<span class="pill" style="background:${m.color}">${esc(m.name)}</span>` : "—");
+  const meaningTxt = (m) => (m ? esc(m.text) : "הזן מימד שקלול לכל מפתח לקבלת הציון");
   html += `<h3>🎯 הציונים ומשמעותם</h3><table>
     <tr><th>מדד</th><th>ציון</th><th>דירוג</th><th>משמעות (טבלה 15)</th></tr>
     <tr><td><strong>CPIav</strong> (לפי הנוהל, משוואה 6.2)</td><td><strong>${fmt(b.method_norm.cpiAv)}</strong></td>
-      <td><span class="pill" style="background:${b.meaningAv.color}">${esc(b.meaningAv.name)}</span></td>
-      <td>${esc(b.meaningAv.text)}</td></tr>
+      <td>${pill(b.meaningAv)}</td>
+      <td>${meaningTxt(b.meaningAv)}</td></tr>
     ${!result.singleUnit ? `<tr><td>CPIav (שיטת שקלול ה-CPI — כקבצים הקיימים)</td><td>${fmt(b.method_files.cpiAv)}</td>
-      <td><span class="pill" style="background:${b.meaningAvFiles.color}">${esc(b.meaningAvFiles.name)}</span></td>
-      <td>${esc(b.meaningAvFiles.text)}</td></tr>` : ""}
+      <td>${pill(b.meaningAvFiles)}</td>
+      <td>${meaningTxt(b.meaningAvFiles)}</td></tr>` : ""}
     <tr><td><strong>CPIcrit</strong> (הרכיב הקריטי)</td><td><strong>${fmt(b.cpiCrit)}</strong></td>
-      <td><span class="pill" style="background:${b.meaningCrit.color}">${esc(b.meaningCrit.name)}</span></td>
-      <td>${esc(b.meaningCrit.text)}</td></tr></table>`;
+      <td>${pill(b.meaningCrit)}</td>
+      <td>${meaningTxt(b.meaningCrit)}</td></tr></table>`;
 
   if (summary.criticalComp) {
     const c = summary.criticalComp;
